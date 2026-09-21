@@ -21,7 +21,10 @@ def quantize_image(image, bits_per_channel):
     quantized = np.floor(img_array / step) * step
     return quantized.astype(np.uint8)
 
-def analyze_zipf_from_image(img, scale_factor=1.0, bits_per_channel=8):
+def analyze_zipf_from_image(img, scale_factor=1.0, bits_per_channel=8,
+                            log_scale_x=True, log_scale_y=True,
+                            show_ref_line=True, show_grid=True,
+                            marker_style='o', top_n=0):
     """
     Analyzes the image for Zipf's Law and generates a plot.
     Returns the matplotlib figure and the number of unique colors.
@@ -43,6 +46,12 @@ def analyze_zipf_from_image(img, scale_factor=1.0, bits_per_channel=8):
     
     # Sort frequencies in descending order
     frequencies = np.sort(counts)[::-1]
+    
+    total_unique_colors = len(frequencies)
+    
+    if top_n > 0:
+        frequencies = frequencies[:top_n]
+        
     ranks = np.arange(1, len(frequencies) + 1)
     
     # Calculate Zipf reference line (y = C / x^a)
@@ -50,16 +59,33 @@ def analyze_zipf_from_image(img, scale_factor=1.0, bits_per_channel=8):
     zipf_line = frequencies[0] / ranks
     
     fig = plt.figure(figsize=(10, 6))
-    plt.loglog(ranks, frequencies, marker='o', linestyle='', markersize=4, label='Image Color Frequencies')
-    plt.loglog(ranks, zipf_line, linestyle='--', color='red', label="Zipf's Law (1/f reference)")
+    
+    m_style = marker_style if marker_style != 'None' else ''
+    l_style = '' if marker_style != 'None' else '-'
+    
+    if log_scale_x and log_scale_y:
+        plt.loglog(ranks, frequencies, marker=m_style, linestyle=l_style, markersize=4, label='Image Color Frequencies')
+        if show_ref_line:
+            plt.loglog(ranks, zipf_line, linestyle='--', color='red', label="Zipf's Law (1/f reference)")
+    else:
+        plot_func = plt.plot
+        if log_scale_x and not log_scale_y:
+            plot_func = plt.semilogx
+        elif not log_scale_x and log_scale_y:
+            plot_func = plt.semilogy
+            
+        plot_func(ranks, frequencies, marker=m_style, linestyle=l_style, markersize=4, label='Image Color Frequencies')
+        if show_ref_line:
+            plot_func(ranks, zipf_line, linestyle='--', color='red', label="Zipf's Law (1/f reference)")
     
     plt.title(f"Zipf's Law Analysis on Colors\nScale: {scale_factor}, Color Bits: {bits_per_channel}")
-    plt.xlabel("Rank (Log Scale)")
-    plt.ylabel("Frequency (Log Scale)")
+    plt.xlabel(f"Rank {'(Log Scale)' if log_scale_x else ''}")
+    plt.ylabel(f"Frequency {'(Log Scale)' if log_scale_y else ''}")
     plt.legend()
-    plt.grid(True, which="both", ls="--", alpha=0.5)
+    if show_grid:
+        plt.grid(True, which="both", ls="--", alpha=0.5)
     
-    return fig, len(frequencies)
+    return fig, total_unique_colors
 
 def analyze_zipf(image_path, scale_factor=1.0, bits_per_channel=8, output_dir="."):
     print(f"Analyzing {image_path} with scale {scale_factor} and {bits_per_channel}-bit color depth...")
