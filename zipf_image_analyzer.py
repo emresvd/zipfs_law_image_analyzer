@@ -33,15 +33,14 @@ def analyze_zipf_from_image(img, scale_factor=1.0, bits_per_channel=8):
     # Quantize colors
     quantized_array = quantize_image(img, bits_per_channel)
     
-    # Flatten array to list of RGB tuples
+    # Flatten array to list of RGB pixels
     pixels = quantized_array.reshape(-1, 3)
-    pixel_tuples = [tuple(p) for p in pixels]
     
-    # Count frequencies
-    counter = Counter(pixel_tuples)
+    # Count frequencies using NumPy (much faster for large images)
+    unique_colors, counts = np.unique(pixels, axis=0, return_counts=True)
     
     # Sort frequencies in descending order
-    frequencies = sorted(list(counter.values()), reverse=True)
+    frequencies = np.sort(counts)[::-1]
     ranks = np.arange(1, len(frequencies) + 1)
     
     # Calculate Zipf reference line (y = C / x^a)
