@@ -28,7 +28,8 @@ def analyze_zipf_from_image(img, scale_factor=1.0, bits_per_channel=8):
     """
     if scale_factor != 1.0:
         new_size = (int(img.width * scale_factor), int(img.height * scale_factor))
-        img = img.resize(new_size, Image.Resampling.LANCZOS)
+        # Use NEAREST instead of LANCZOS for much faster resizing, it is sufficient for color distributions
+        img = img.resize(new_size, Image.Resampling.NEAREST)
     
     # Quantize colors
     quantized_array = quantize_image(img, bits_per_channel)
@@ -36,8 +37,9 @@ def analyze_zipf_from_image(img, scale_factor=1.0, bits_per_channel=8):
     # Flatten array to list of RGB pixels
     pixels = quantized_array.reshape(-1, 3)
     
-    # Count frequencies using NumPy (much faster for large images)
-    unique_colors, counts = np.unique(pixels, axis=0, return_counts=True)
+    # Pack RGB into a single 32-bit integer for much faster unique counting
+    pixels_1d = pixels[:, 0].astype(np.uint32) << 16 | pixels[:, 1].astype(np.uint32) << 8 | pixels[:, 2].astype(np.uint32)
+    _, counts = np.unique(pixels_1d, return_counts=True)
     
     # Sort frequencies in descending order
     frequencies = np.sort(counts)[::-1]
